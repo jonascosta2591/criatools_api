@@ -2,11 +2,14 @@ import express from "express";
 import selectChatGPTtoken from "./selectChatgptToken.js";
 import selectUserLiberado from "./selectUserLiberado.js";
 import register_user from "./register_user.js";
+import register_user_with_uuid_group from "./register_user_with_uuid_group.js";
 import select_user from "./select_user.js";
 import select_user_with_uuid from "./select_user_with_uuid.js";
 import setJsonCookieLeonardoIA from "./setJsonCookieLeonardoIA.js";
 import select_leonardo_ia from "./select_leonardo_ia.js";
 import select_groups from "./select_groups.js";
+import select_email from "./select_email.js";
+import select_groups_with_count_users from "./select_groups_with_count_users.js";
 import select_chatgpt from "./select_chatgpt.js";
 import select_logins_ias from "./select_logins_ias.js";
 import setJsonCookieChatgpt from "./setJsonCookieChatgpt.js";
@@ -23,7 +26,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const API_asaas = "https://sandbox.asaas.com/api";
 
-const access_token = `$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwOTQ3Mjc6OiRhYWNoXzljNjcxNjE0LWVjMTAtNDIzMi1iYmJjLWU4MWE2OTYwYWIzZg==`;
+const access_token = `$aact_YTU5YTE0M2M2N2I4MTliNzk0YTI5N2U5MzdjNWZmNDQ6OjAwMDAwMDAwMDAwMDAwOTQ3Mjc6OiRhYWNoX2QxYWZjMGViLTczODctNDEyNy1hM2U1LTFhZTA3ZDYxMTEzNw==`;
 
 function reverse(s) {
   return s.split("").reverse().join("");
@@ -226,6 +229,22 @@ app.post("/login_user", async function (req, res) {
   }
 });
 
+app.post("/verify_if_exist_email_in_db", async function (req, res) {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  try {
+    let dbResponse = await select_email(req.body.email);
+    if (dbResponse[0]) {
+      res.json({ emailMsg: "exist" });
+    } else {
+      res.json({ emailMsg: "not exist" });
+    }
+  } catch {}
+});
+
 app.get("/verify_if_user_is_active", async function (req, res) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
@@ -333,10 +352,33 @@ app.post("/send_payment_credit_card", async function (req, res) {
         },
       }
     );
+    if (response.data.status === "ACTIVE") {
+      // REGISTRA USUÁRIO COM UUID DO GRUPO CERTO
+      let groupsMenorQue100 = await select_groups_with_count_users();
+      let uuidGroupsMenorQue100 = groupsMenorQue100[0].uuid_grupo;
+      let id_subscription = response.data.id;
+      let customer = response.data.customer;
+      let asaas_data = JSON.stringify(response.data);
 
-    console.log(response);
-    res.send("1");
-  } catch {}
+      let passwordHashed = await bcrypt.hash(req.body.password, 10);
+      // console.log(passwordHashed)
+      let dbResponse = await register_user_with_uuid_group(
+        req.body.nome_completo,
+        req.body.email,
+        passwordHashed,
+        cycle,
+        uuidGroupsMenorQue100,
+        id_subscription,
+        customer,
+        asaas_data
+      );
+      res.send(response.data);
+    } else {
+      res.json({ erro: "Ocorreu algum erro, por favor contate o suporte" });
+    }
+  } catch (err) {
+    res.send(err);
+  }
 });
 
 app.listen(3344);
