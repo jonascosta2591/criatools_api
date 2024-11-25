@@ -1,4 +1,7 @@
 import express from "express";
+import https from 'https';
+import fs from 'fs';
+import path from 'path';
 import selectChatGPTtoken from "./selectChatgptToken.js";
 import selectUserLiberado from "./selectUserLiberado.js";
 import register_user from "./register_user.js";
@@ -17,6 +20,13 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import axios from "axios";
 import { format } from "date-fns";
+
+// Caminho para os arquivos de certificado
+const options = {
+  key: fs.readFileSync(path.resolve('./private.key')),
+  cert: fs.readFileSync(path.resolve('./certificate.crt')),
+  ca: fs.readFileSync(path.resolve('./ca_bundle.crt'))
+};
 
 const app = express();
 
@@ -381,4 +391,8 @@ app.post("/send_payment_credit_card", async function (req, res) {
   }
 });
 
-app.listen(3344);
+// app.listen(80);
+
+https.createServer(options, app).listen(443, () => {
+  console.log('Servidor HTTPS com Express rodando na porta 443');
+});
